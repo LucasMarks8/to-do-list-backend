@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import { db } from './database/knex'
-import { TUserDB } from './database/types'
+import { TTaskDB, TUserDB } from './database/types'
 
 const app = express()
 
@@ -165,16 +165,16 @@ app.delete("/users/:id", async (req: Request, res: Response) => {
     try {
         const idToDelete = req.params.id
 
-        const [ userAlreadyExists ]: TUserDB[] | undefined[] = await db("users").where({id: idToDelete})
+        const [userAlreadyExists]: TUserDB[] | undefined[] = await db("users").where({ id: idToDelete })
 
-        if(!userAlreadyExists) {
+        if (!userAlreadyExists) {
             res.status(404)
             throw new Error("'id não existe");
         }
 
-        await db("users").del().where({id: idToDelete})
+        await db("users").del().where({ id: idToDelete })
 
-        res.status(200).send({ message: "usuário deletado com sucesso"})
+        res.status(200).send({ message: "usuário deletado com sucesso" })
 
     } catch (error) {
         console.log(error)
@@ -202,9 +202,77 @@ app.get("/tasks", async (req: Request, res: Response) => {
             res.status(200).send(result)
         } else {
             const result = await db("tasks").where("title", "LIKE", `%${searchTerm}%`)
-            .orWhere("description", "LIKE", `%${searchTerm}%`)
+                .orWhere("description", "LIKE", `%${searchTerm}%`)
             res.status(200).send(result)
         }
+    } catch (error) {
+        console.log(error)
+
+        if (req.statusCode === 200) {
+            res.status(500)
+        }
+
+        if (error instanceof Error) {
+            res.send(error.message)
+        } else {
+            res.send("Erro inesperado")
+        }
+    }
+})
+
+//Create tasks
+
+app.post("/tasks", async (req: Request, res: Response) => {
+    try {
+        const { id, title, description } = req.body
+
+        if (typeof id !== "string") {
+            res.status(400)
+            throw new Error("'id' deve ser string");
+        }
+
+        if (id.length < 2) {
+            res.status(400)
+            throw new Error("'id' deve possuir pelo menos 4 caracteres");
+        }
+
+        if (typeof title !== "string") {
+            res.status(400)
+            throw new Error("'title' deve ser string");
+        }
+
+        if (title.length < 2) {
+            res.status(400)
+            throw new Error("'title' deve possuir pelo menos 4 caracteres");
+        }
+
+        if (typeof description !== "string") {
+            res.status(400)
+            throw new Error("'description' deve ser string");
+        }
+
+        const [tasksIdAlreadyExists]: TTaskDB[] | undefined[] = await db("tasks").where({ id })
+
+        if (tasksIdAlreadyExists) {
+            res.status(400)
+            throw new Error("'id' já existe");
+        }
+
+        const newTask = {
+            id,
+            title,
+            description
+        }
+
+        await db("tasks").insert(newTask)
+
+        const [ insertedTask ]: TTaskDB[] = await db("tasks").where({ id })
+
+        res.status(200).send({
+            message: "tarefa cadastrada com sucesso",
+            user: insertedTask
+        })
+
     } catch (error) {
         console.log(error)
 
