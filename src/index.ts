@@ -165,6 +165,11 @@ app.delete("/users/:id", async (req: Request, res: Response) => {
     try {
         const idToDelete = req.params.id
 
+        if( idToDelete[0] !== "f") {
+            res.status(400)
+            throw new Error("'id' deve iniciar com a letra 'f");
+        }
+
         const [userAlreadyExists]: TUserDB[] | undefined[] = await db("users").where({ id: idToDelete })
 
         if (!userAlreadyExists) {
@@ -383,3 +388,41 @@ app.put("/tasks/:id", async (req: Request, res: Response) => {
         }
     }
 })
+
+// Delete task
+
+app.delete("/tasks/:id", async (req: Request, res: Response) => {
+    try {
+        const idToDelete = req.params.id
+
+        if( idToDelete[0] !== "t") {
+            res.status(400)
+            throw new Error("'id' deve iniciar com a letra 't");
+        }
+
+        const [ taskIdToDelete ]: TTaskDB[] | undefined[] = await db("tasks").where({ id: idToDelete })
+
+        if (!taskIdToDelete) {
+            res.status(404)
+            throw new Error("'id não existe");
+        }
+
+        await db("tasks").del().where({ id: idToDelete })
+
+        res.status(200).send({ message: "tarefa deletada com sucesso" })
+
+    } catch (error) {
+        console.log(error)
+
+        if (req.statusCode === 200) {
+            res.status(500)
+        }
+
+        if (error instanceof Error) {
+            res.send(error.message)
+        } else {
+            res.send("Erro inesperado")
+        }
+    }
+})
+
